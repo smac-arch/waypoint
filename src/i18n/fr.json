@@ -1,0 +1,12 @@
+{
+  "brand": "WAYPOINT DELIVER",
+  "stopTitle": "Arrêt {{sequence}}",
+  "scan": "Scanner",
+  "takePhoto": "Prendre une photo",
+  "captureSignature": "Recueillir la signature",
+  "completeStop": "Terminer l’arrêt",
+  "waitingForAction": "Action en cours",
+  "offlineError": "Vous êtes hors ligne. Connectez-vous pour continuer cet arrêt.",
+  "genericError": "Cette action n’a pas pu être effectuée. Veuillez réessayer.",
+  "completed": "Arrêt terminé. Prêt pour la prochaine livraison."
+}

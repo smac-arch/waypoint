@@ -1,0 +1,12 @@
+{
+  "brand": "WAYPOINT DELIVER",
+  "stopTitle": "Stop {{sequence}}",
+  "scan": "Scannen",
+  "takePhoto": "Foto maken",
+  "captureSignature": "Handtekening vastleggen",
+  "completeStop": "Stop afronden",
+  "waitingForAction": "Actie wordt uitgevoerd",
+  "offlineError": "Je bent offline. Maak verbinding om deze stop voort te zetten.",
+  "genericError": "Deze actie kon niet worden voltooid. Probeer het opnieuw.",
+  "completed": "Stop voltooid. Klaar voor de volgende levering."
+}

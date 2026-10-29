@@ -4,10 +4,11 @@ import { captures } from '../__mocks__/react-native';
 import { StopCompletionScreen } from '../src/features/stops/StopCompletionScreen';
 import { StopCompletionService } from '../src/features/stops/StopCompletionService';
 import { sampleStop } from '../src/fixtures/sampleStop';
+import type { Locale } from '../src/i18n';
 import { NetworkMonitor, OfflineError } from '../src/platform/NetworkMonitor';
 import { SecureStorage } from '../src/platform/SecureStorage';
 
-function renderScreen() {
+function renderScreen(locale: Locale = 'en') {
   const api = {
     uploadProofOfDelivery: jest.fn(async () => ({
       id: 'proof-sample-012',
@@ -26,7 +27,11 @@ function renderScreen() {
   let screen: ReactTestRenderer;
   act(() => {
     screen = create(
-      <StopCompletionScreen stop={sampleStop} service={service} />,
+      <StopCompletionScreen
+        stop={sampleStop}
+        service={service}
+        locale={locale}
+      />,
     );
   });
   return { screen: screen!, service, api };
@@ -98,5 +103,18 @@ it('shows actionable offline feedback and allows retry without exposing raw erro
     screen.root.findByProps({ title: 'Scan' }).props.onPress();
   });
   expect(JSON.stringify(screen.toJSON())).not.toContain('PRIVATE-PAYLOAD');
+  act(() => screen.unmount());
+});
+
+it('renders stop actions and offline feedback in the selected language', async () => {
+  const { screen, service } = renderScreen('fr');
+  jest.spyOn(service, 'scan').mockRejectedValueOnce(new OfflineError());
+  expect(screen.root.findByProps({ title: 'Scanner' })).toBeDefined();
+  await act(async () => {
+    screen.root.findByProps({ title: 'Scanner' }).props.onPress();
+  });
+  expect(JSON.stringify(screen.toJSON())).toContain(
+    'Vous êtes hors ligne. Connectez-vous pour continuer cet arrêt.',
+  );
   act(() => screen.unmount());
 });

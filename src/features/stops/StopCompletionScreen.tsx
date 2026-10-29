@@ -9,16 +9,18 @@ import {
 } from 'react-native';
 import type { Stop } from '../../models/Stop';
 import { OfflineError } from '../../platform/NetworkMonitor';
+import { translate, type Locale } from '../../i18n';
 import type { StopCompletionService } from './StopCompletionService';
 
 interface Props {
   stop: Stop;
   service: StopCompletionService;
+  locale?: Locale;
 }
 
 type Step = 'scan' | 'photo' | 'signature' | 'complete' | 'done';
 
-export function StopCompletionScreen({ stop, service }: Props) {
+export function StopCompletionScreen({ stop, service, locale = 'en' }: Props) {
   const [step, setStep] = useState<Step>('scan');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +35,8 @@ export function StopCompletionScreen({ stop, service }: Props) {
       // Native/HTTP errors can contain personal data; never render raw messages.
       setError(
         cause instanceof OfflineError
-          ? 'You are offline. Connect to continue this stop.'
-          : 'This action could not be completed. Please try again.',
+          ? translate(locale, 'offlineError')
+          : translate(locale, 'genericError'),
       );
     } finally {
       setBusy(false);
@@ -43,41 +45,45 @@ export function StopCompletionScreen({ stop, service }: Props) {
 
   return (
     <SafeAreaView style={styles.page}>
-      <Text style={styles.brand}>WAYPOINT DELIVER</Text>
-      <Text style={styles.title}>Stop {stop.sequence}</Text>
+      <Text style={styles.brand}>{translate(locale, 'brand')}</Text>
+      <Text style={styles.title}>
+        {translate(locale, 'stopTitle', { sequence: stop.sequence })}
+      </Text>
       <Text>{stop.recipient.name}</Text>
       <Text>{stop.recipient.address}</Text>
       <View style={styles.actions}>
         <Button
-          title="Scan"
+          title={translate(locale, 'scan')}
           disabled={busy || step !== 'scan'}
           onPress={() => void run(() => service.scan(stop), 'photo')}
         />
         <Button
-          title="Take photo"
+          title={translate(locale, 'takePhoto')}
           disabled={busy || step !== 'photo'}
           onPress={() =>
             void run(() => service.takePhoto(stop.id), 'signature')
           }
         />
         <Button
-          title="Capture signature"
+          title={translate(locale, 'captureSignature')}
           disabled={busy || step !== 'signature'}
           onPress={() =>
             void run(() => service.captureSignature(stop.id), 'complete')
           }
         />
         <Button
-          title="Complete stop"
+          title={translate(locale, 'completeStop')}
           disabled={busy || step !== 'complete'}
           onPress={() => void run(() => service.completeStop(stop.id), 'done')}
         />
       </View>
-      {busy && <ActivityIndicator accessibilityLabel="Waiting for action" />}
-      {error && <Text accessibilityRole="alert">{error}</Text>}
-      {step === 'done' && (
-        <Text>Stop completed. Ready for the next delivery.</Text>
+      {busy && (
+        <ActivityIndicator
+          accessibilityLabel={translate(locale, 'waitingForAction')}
+        />
       )}
+      {error && <Text accessibilityRole="alert">{error}</Text>}
+      {step === 'done' && <Text>{translate(locale, 'completed')}</Text>}
     </SafeAreaView>
   );
 }
