@@ -1,0 +1,12 @@
+{
+  "brand": "WAYPOINT DELIVER",
+  "stopTitle": "Stopp {{sequence}}",
+  "scan": "Scannen",
+  "takePhoto": "Foto aufnehmen",
+  "captureSignature": "Unterschrift erfassen",
+  "completeStop": "Stopp abschließen",
+  "waitingForAction": "Aktion wird ausgeführt",
+  "offlineError": "Du bist offline. Stelle eine Verbindung her, um diesen Stopp fortzusetzen.",
+  "genericError": "Diese Aktion konnte nicht abgeschlossen werden. Bitte versuche es erneut.",
+  "completed": "Stopp abgeschlossen. Bereit für die nächste Lieferung."
+}
