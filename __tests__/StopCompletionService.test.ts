@@ -2,11 +2,24 @@ import { captures } from '../__mocks__/react-native';
 import { emitNetworkState, onlineState } from '../__mocks__/netinfo';
 import { StopCompletionService } from '../src/features/stops/StopCompletionService';
 import { sampleStop } from '../src/fixtures/sampleStop';
-import type { ProofOfDelivery } from '../src/models/ProofOfDelivery';
+import type {
+  ProofOfDelivery,
+  ProofOfDeliveryUpload,
+} from '../src/models/ProofOfDelivery';
 import { NetworkMonitor, OfflineError } from '../src/platform/NetworkMonitor';
 import { SecureStorage } from '../src/platform/SecureStorage';
 
-function setup() {
+function setup(
+  options: {
+    offlineMode?: boolean;
+    offlineCompletion?: {
+      enqueueStopCompletion: jest.Mock<
+        Promise<void>,
+        [string, ProofOfDeliveryUpload]
+      >;
+    };
+  } = {},
+) {
   const api = {
     uploadProofOfDelivery: jest.fn(async () => ({
       id: 'proof-sample-012',
@@ -23,6 +36,8 @@ function setup() {
     storage,
     captures,
     logger,
+    offlineMode: options.offlineMode,
+    offlineCompletion: options.offlineCompletion,
   });
   return { service, api, storage, logger };
 }
@@ -64,6 +79,49 @@ it('throws offline before capturing anything', async () => {
     OfflineError,
   );
   expect(captures.scanParcel).not.toHaveBeenCalled();
+  expect(api.completeStop).not.toHaveBeenCalled();
+});
+
+it('uses the offline completion handler when offlineMode is enabled', async () => {
+  const offlineCompletion = {
+    enqueueStopCompletion: jest.fn<
+      Promise<void>,
+      [string, ProofOfDeliveryUpload]
+    >(async () => {}),
+  };
+  const { service, api, storage } = setup({
+    offlineMode: true,
+    offlineCompletion,
+  });
+  emitNetworkState({ ...onlineState, isConnected: false });
+
+  await service.completeDelivery(sampleStop);
+
+  expect(offlineCompletion.enqueueStopCompletion).toHaveBeenCalledWith(
+    sampleStop.id,
+    {
+      photoBase64: 'c2FtcGxlLXBob3Rv',
+      signatureBase64: 'c2FtcGxlLXNpZ25hdHVyZQ==',
+      capturedAt: expect.any(String),
+    },
+  );
+  expect(api.uploadProofOfDelivery).not.toHaveBeenCalled();
+  expect(api.completeStop).not.toHaveBeenCalled();
+  expect(service.pendingCaptures).toEqual([]);
+  expect(await storage.getItem(`pod-photo:${sampleStop.id}`)).toBeNull();
+});
+
+it('does not discard an offline capture when no offline handler is configured', async () => {
+  const { service, api } = setup({ offlineMode: true });
+
+  await service.scan(sampleStop);
+  await service.takePhoto(sampleStop.id);
+  await service.captureSignature(sampleStop.id);
+  await expect(service.completeStop(sampleStop.id)).rejects.toThrow(
+    'Offline completion is not configured.',
+  );
+
+  expect(service.pendingCaptures).toHaveLength(1);
   expect(api.completeStop).not.toHaveBeenCalled();
 });
 

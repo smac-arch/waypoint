@@ -1,5 +1,8 @@
 import type { DispatchApiClient } from '../../api/DispatchApiClient';
-import type { ProofOfDelivery } from '../../models/ProofOfDelivery';
+import type {
+  ProofOfDelivery,
+  ProofOfDeliveryUpload,
+} from '../../models/ProofOfDelivery';
 import type { Stop } from '../../models/Stop';
 import type { Logger } from '../../platform/Logger';
 import type { CaptureDevice } from '../../platform/NativeBridge';
@@ -22,6 +25,13 @@ interface Dependencies {
   storage: Pick<SecureStorage, 'setItem' | 'getItem' | 'removeItem'>;
   captures: CaptureDevice;
   logger: Pick<Logger, 'info'>;
+  offlineMode?: boolean;
+  offlineCompletion?: {
+    enqueueStopCompletion(
+      stopId: string,
+      proof: ProofOfDeliveryUpload,
+    ): Promise<void>;
+  };
 }
 
 export class StopCompletionService {
@@ -44,7 +54,9 @@ export class StopCompletionService {
       throw new Error('A stop action is already running.');
     this.busy.add(stopId);
     try {
-      if (!(await this.deps.network.isOnline())) throw new OfflineError();
+      if (!this.deps.offlineMode && !(await this.deps.network.isOnline())) {
+        throw new OfflineError();
+      }
       return await work();
     } catch (error) {
       this.deps.logger.info('stop.action_failed', { stopId });
@@ -105,6 +117,30 @@ export class StopCompletionService {
 
   async completeStop(stopId: string): Promise<void> {
     await this.action(stopId, async () => {
+      if (this.deps.offlineMode) {
+        const capture = this.pendingCaptures.find(
+          (item) => item.stopId === stopId,
+        );
+        if (!capture?.signatureBase64) {
+          throw new Error('Scan, photo and signature are required.');
+        }
+        if (!this.deps.offlineCompletion) {
+          throw new Error('Offline completion is not configured.');
+        }
+        const photo = await this.deps.storage.getItem(capture.photoKey);
+        if (!photo) throw new Error('The encrypted photo could not be found.');
+        await this.deps.offlineCompletion.enqueueStopCompletion(stopId, {
+          photoBase64: photo,
+          signatureBase64: capture.signatureBase64,
+          capturedAt: capture.capturedAt,
+        });
+        await this.deps.storage.removeItem(capture.photoKey);
+        this.pendingCaptures.splice(this.pendingCaptures.indexOf(capture), 1);
+        this.scanned.delete(stopId);
+        this.deps.logger.info('stop.completed', { stopId });
+        return;
+      }
+
       let uploaded = this.uploaded.get(stopId);
       if (!uploaded) {
         const capture = this.pendingCaptures.find(
