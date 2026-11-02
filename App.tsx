@@ -21,6 +21,7 @@ export default function App() {
         storage: new SecureStorage(),
         captures: nativeBridge.captures(),
         logger: new Logger(),
+        offlineMode: config.offlineMode,
       }),
   );
   return (
